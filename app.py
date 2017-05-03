@@ -1,17 +1,37 @@
 #!flask/bin/python
-from flask import Flask, jsonify
+from flask import Flask, jsonify, send_file, request
 
 app = Flask(__name__)
 
-URL_CLIENT_TAHOE = 'http://192.168.1.6:3456'
-import requests
+import sqlite3, requests, os
 
-@app.route('/api/user/files', methods=['GET'])
-def get_files_user():
-    return requests.get(URL_CLIENT_TAHOE+'/uri/URI%3ADIR2%3A5ve74zzi3rqr5arqn5wj5helfm%3Advwnbm4hv2cww42xqnbkhj4vbhpwmiord2bkmsv2kkmscxhledyq?t=json').text
-@app.route('/api/user/file', methods=['GET'])
-def get_file_user():
-    return requests.get(URL_CLIENT_TAHOE+'/uri/URI%3ADIR2%3A5ve74zzi3rqr5arqn5wj5helfm%3Advwnbm4hv2cww42xqnbkhj4vbhpwmiord2bkmsv2kkmscxhledyq/foto.jpg').text
+URL_CLIENT_TAHOE = 'http://192.168.1.6:3456'
+
+def getUserDirCap(user, conn):
+    cursor = conn.execute("SELECT dircap FROM USERS WHERE nick =?", [str(user)])
+    return cursor.fetchone()[0]
+
+@app.route('/api/<user>/files', methods=['GET'])
+def get_files_user(user):
+    conn = sqlite3.connect('users.bd')
+    dircap = getUserDirCap(user, conn)
+    conn.close()
+    return requests.get(URL_CLIENT_TAHOE + '/uri/' + dircap + "?t=json").text
+
+@app.route('/api/<user>/<fileName>', methods=['GET'])
+def get_file_user(user, fileName):
+
+    if request.args.get('t') == "info":
+        return fileName
+    else:
+        conn = sqlite3.connect('users.bd')
+        dircap = getUserDirCap("Pezmosca", conn)
+        conn.close()
+        response = requests.get(URL_CLIENT_TAHOE + '/uri/' + dircap + '/' + fileName)
+        f = open("/home/toni/" + fileName, 'wb')
+        f.write(response.content)
+        os.remove("/home/toni/" + fileName)
+        return send_file(f, as_attachment=True, attachment_filename=fileName)
 
 @app.route('/api/user/upload_file', methods=['POST'])
 def upload_file_user():
