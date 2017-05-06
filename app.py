@@ -1,12 +1,14 @@
 #!flask/bin/python
 from flask import Flask, jsonify, send_file, request, make_response
 from flask.ext.httpauth import HTTPBasicAuth
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 
 import sqlite3, requests, os, hashlib, uuid
 
 URL_CLIENT_TAHOE = 'http://192.168.1.6:3456'
+ALLOWED_EXTENSIONS = set(['txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'zip', 'gz'])
 
 auth = HTTPBasicAuth()
 
@@ -31,6 +33,10 @@ def signUpUser(user, password, dircap, conn):
 
     conn.commit()
 
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
 @auth.get_password
 def get_password(username):
     conn = sqlite3.connect('users.bd')
@@ -43,7 +49,7 @@ def unauthorized():
     return make_response(jsonify({'error': 'Unauthorized access'}), 401)
 
 @app.route('/api/<user>/files', methods=['GET'])
-@auth.login_required
+#@auth.login_required
 def get_files_user(user):
     conn = sqlite3.connect('users.bd')
     dircap = getUserDirCap(user, conn)
@@ -64,7 +70,7 @@ def get_files_user(user):
 #    return make_response(jsonify({'error': 'Unauthorized access'}), 401)
 
 @app.route('/api/<user>/<fileName>', methods=['GET'])
-@auth.login_required
+#@auth.login_required
 def get_file_user(user, fileName):
     if request.args.get('t') == "info":
         return fileName
@@ -78,16 +84,38 @@ def get_file_user(user, fileName):
         os.remove(fileName)
         return send_file(f, as_attachment=True, attachment_filename=fileName)
 
-@app.route('/api/user/upload_file', methods=['POST'])
-def upload_file_user():
-    files = {'upload_file': open('file.txt', 'rb')}
+@app.route('/api/<user>/upload_file', methods=['POST'])
+#@auth.login_required
+def upload_file_user(user):
+    conn = sqlite3.connect('users.bd')
+    dircap = getUserDirCap(user, conn)
+    conn.close()
+    # check if the post request has the file part
+    if 'file' not in request.files:
+        flash('No file part')
+        #return redirect(request.url)
+        return "MAL"
+    file = request.files['file']
+    # if user does not select file, browser also
+    # submit a empty part without filename
+    if file.filename == '':
+        flash('No selected file')
+        #return redirect(request.url)
+        return "MAL"
+    #if file and allowed_file(file.filename):
+    filename = secure_filename(file.filename)
+    files = {'file': filename}
+    return requests.post(URL_CLIENT_TAHOE + '/uri/' + dircap + '?t=upload', files=files).text
+    #return "HELLO"
 
 @app.route('/api/signup', methods=["POST"])
 def signup():
+    #FALTA MIRAR QUE NO EXISTA EL USER
     conn = sqlite3.connect('users.bd')
     #user = jsonify(request.get_json(force=True))
     user = request.get_json()
-    signUpUser(user['user'], user['password'], user['dircap'], conn)
+    r = requests.post(url + '/uri?t=mkdir&name=' + user['user'])
+    signUpUser(user['user'], user['password'], r.text, conn)
     conn.close()
     return "OK"
 
