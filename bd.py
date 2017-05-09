@@ -12,6 +12,6 @@ conn.execute("INSERT INTO USERS (NICK, PASSWORD, DIRCAP) \
 
 conn.commit()
 
-print "OK"
+print("OK")
 
 conn.close()

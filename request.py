@@ -8,4 +8,4 @@ files = {'file': open('user.json','rb')}
 #r = requests.post(url + '/uri/URI%3ADIR2%3A5ve74zzi3rqr5arqn5wj5helfm%3Advwnbm4hv2cww42xqnbkhj4vbhpwmiord2bkmsv2kkmscxhledyq?t=mkdir&name=cosas')
 r = requests.post(url + '/uri?t=mkdir&name=cosas')
 
-print r.text
+print(r.text)

@@ -19,7 +19,7 @@ def hashPassword(password):
 cursor = conn.execute("SELECT nick FROM USERS")
 for cosa in cursor:
     for i in cosa:
-        print i
+        print(i)
 
-print "OK"
+print("OK")
 conn.close()
