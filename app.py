@@ -1,5 +1,5 @@
 #!flask/bin/python
-from flask import Flask, jsonify, send_file, request, make_response, flash
+from flask import Flask, jsonify, send_file, request, make_response, flash, Response, stream_with_context
 from flask.ext.httpauth import HTTPBasicAuth
 from werkzeug.utils import secure_filename
 
@@ -78,11 +78,9 @@ def get_file_user(user, fileName):
         conn = sqlite3.connect('users.bd')
         dircap = getUserDirCap(user, conn)
         conn.close()
+        print(URL_CLIENT_TAHOE + '/uri/' + dircap + '/' + fileName)
         response = requests.get(URL_CLIENT_TAHOE + '/uri/' + dircap + '/' + fileName)
-        f = open(fileName, 'wb')
-        f.write(response.content)
-        os.remove(fileName)
-        return send_file(f, as_attachment=True, attachment_filename=fileName)
+        return Response(stream_with_context(response.iter_content()), content_type = response.headers['content-type'])
 
 @app.route('/api/<user>/upload_file', methods=['POST'])
 #@auth.login_required
