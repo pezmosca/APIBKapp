@@ -1,5 +1,5 @@
 #!flask/bin/python
-from flask import Flask, jsonify, send_file, request, make_response
+from flask import Flask, jsonify, send_file, request, make_response, flash
 from flask.ext.httpauth import HTTPBasicAuth
 from werkzeug.utils import secure_filename
 
@@ -7,7 +7,7 @@ app = Flask(__name__)
 
 import sqlite3, requests, os, hashlib, uuid
 
-URL_CLIENT_TAHOE = 'http://192.168.1.6:3456'
+URL_CLIENT_TAHOE = 'http://192.168.5.240:3456'
 ALLOWED_EXTENSIONS = set(['txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'zip', 'gz'])
 
 auth = HTTPBasicAuth()
@@ -114,10 +114,12 @@ def signup():
     conn = sqlite3.connect('users.bd')
     #user = jsonify(request.get_json(force=True))
     user = request.get_json()
-    r = requests.post(url + '/uri?t=mkdir&name=' + user['user'])
+    r = requests.post(URL_CLIENT_TAHOE + '/uri?t=mkdir&name=' + user['user'])
     signUpUser(user['user'], user['password'], r.text, conn)
     conn.close()
     return "OK"
 
 if __name__ == '__main__':
+    app.secret_key = 'kubernetesydockers'
+    app.config['SESSION_TYPE'] = 'filesystem'
     app.run(debug=True)
