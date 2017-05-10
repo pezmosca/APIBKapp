@@ -5,7 +5,7 @@ from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 
-import sqlite3, requests, os, hashlib, uuid
+import sqlite3, requests, os, hashlib, uuid, json
 
 URL_CLIENT_TAHOE = 'http://192.168.5.240:3456'
 ALLOWED_EXTENSIONS = set(['txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'zip', 'gz'])
@@ -23,6 +23,13 @@ def existUser(user):
     else:
         return True
 
+def insertFurl(furl, conn):
+    conn.execute("INSERT INTO GESTION (FURL) VALUES (?);", [furl]);
+    conn.commit()
+
+def getFurl(conn):
+    cursor = conn.execute("SELECT FURL FROM GESTION")
+    return cursor.fetchone()[0]
 
 def getUserDirCap(user, conn):
     cursor = conn.execute("SELECT dircap FROM USERS WHERE nick =?", [str(user)])
@@ -131,6 +138,20 @@ def signin():
     json = request.get_json()
     if existUser(json['user']):
         pass
+
+@app.route('/api/gestion', methods=["GET", "POST"])
+def gestion():
+    if request.method == 'GET':
+        conn = sqlite3.connect('users.bd')
+        furl = getFurl(conn)
+        return str(furl)
+    if request.method == 'POST':
+        conn = sqlite3.connect('users.bd')
+        insertFurl(request.form['furl'], conn)
+        conn.close()
+        return request.form['furl']
+
+
 
 if __name__ == '__main__':
     app.secret_key = 'kubernetesydockers'
