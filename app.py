@@ -16,6 +16,14 @@ def hashPassword(password):
     salt = uuid.uuid4().hex
     return str(hashlib.sha512(password + salt).hexdigest())
 
+def existUser(user):
+    cursor = conn.execute("SELECT * FROM USERS WHERE nick =?", [str(user)])
+    if not cursor.fethcall():
+        return False
+    else:
+        return True
+
+
 def getUserDirCap(user, conn):
     cursor = conn.execute("SELECT dircap FROM USERS WHERE nick =?", [str(user)])
     return cursor.fetchone()[0]
@@ -116,6 +124,13 @@ def signup():
     signUpUser(user['user'], user['password'], r.text, conn)
     conn.close()
     return "OK"
+
+@app.route('/api/signin', methods=["POST"])
+def signin():
+    conn = sqlite3.connect('users.bd')
+    json = request.get_json()
+    if existUser(json['user']):
+        pass
 
 if __name__ == '__main__':
     app.secret_key = 'kubernetesydockers'
