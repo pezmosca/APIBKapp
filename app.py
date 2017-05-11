@@ -16,11 +16,14 @@ def hashPassword(password):
     salt = uuid.uuid4().hex
     return str(hashlib.sha512(password + salt).hexdigest())
 
-def existUser(user):
+def exist_user(user):
+    conn = sqlite3.connect('users.bd')
     cursor = conn.execute("SELECT * FROM USERS WHERE nick =?", [str(user)])
-    if not cursor.fethcall():
+    if not cursor.fetchall():
+        conn.close()
         return False
     else:
+        conn.close()
         return True
 
 def insertFurl(furl, conn):
@@ -134,10 +137,16 @@ def signup():
 
 @app.route('/api/signin', methods=["POST"])
 def signin():
-    conn = sqlite3.connect('users.bd')
     json = request.get_json()
-    if existUser(json['user']):
-        pass
+    if exist_user(json['user']):
+        hash_in = json['password']
+        hash_out = get_password(json['user'])
+        if hash_in == hash_out:
+            return jsonify(success=True)
+        else:
+            return jsonify(success=False)
+    
+    return jsonify(success=False)
 
 @app.route('/api/gestion', methods=["GET", "POST"])
 def gestion():
