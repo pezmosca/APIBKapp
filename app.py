@@ -1,9 +1,11 @@
 #!flask/bin/python
 from flask import Flask, jsonify, send_file, request, make_response, flash, Response, stream_with_context
+from flask_cors import CORS, cross_origin #habilitem cross domain api
 from flask.ext.httpauth import HTTPBasicAuth
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
+CORS(app)
 
 import sqlite3, requests, os, hashlib, uuid, json
 
