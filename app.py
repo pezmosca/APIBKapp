@@ -14,9 +14,22 @@ ALLOWED_EXTENSIONS = set(['txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'zip', 'gz'
 
 auth = HTTPBasicAuth()
 
-def hashPassword(password):
+def new_salted_password(password):
     salt = uuid.uuid4().hex
     return str(hashlib.sha512(password + salt).hexdigest())
+
+@auth.hash_password
+def get_hash_password(username, password):
+    salt = get_user_salt(username)
+    return hashlib.sha512(str(password).encode('utf-8') + str(salt).encode('utf-8')).hexdigest()
+
+@auth.get_password
+def get_password(username):
+    conn = sqlite3.connect('users.bd')
+    password = get_user_password(username, conn)
+    conn.close()
+    return password
+
 
 def exist_user(user):
     conn = sqlite3.connect('users.bd')
@@ -28,53 +41,60 @@ def exist_user(user):
         conn.close()
         return True
 
-def insertFurl(furl, conn):
+def insert_furl(furl, conn):
     conn.execute("INSERT INTO GESTION (FURL) VALUES (?);", [furl]);
     conn.commit()
 
-def getFurl(conn):
+def get_furl(conn):
     cursor = conn.execute("SELECT FURL FROM GESTION")
     return cursor.fetchone()[0]
 
-def getUserDirCap(user, conn):
+def get_user_dir_cap(user, conn):
     cursor = conn.execute("SELECT dircap FROM USERS WHERE nick =?", [str(user)])
     return cursor.fetchone()[0]
 
-def getUserPassword(user, conn):
+def get_user_password(user, conn):
     cursor = conn.execute("SELECT password FROM USERS WHERE nick =?", [str(user)])
     return cursor.fetchone()[0]
 
-def signUpUser(user, password, dircap, conn):
-    #conn.execute("INSERT INTO USERS (NICK, PASSWORD, DIRCAP) \
-    	#VALUES (?, ?, ?);", [str(user), hashPassword(password), str(dircap)]);
+def get_user_salt(user):
+    conn = sqlite3.connect('users.bd')
+    cursor = conn.execute("SELECT salt FROM USERS WHERE nick =?", [str(user)])
+    salt = cursor.fetchone()[0]
+    conn.close()
+    return salt
 
-    conn.execute("INSERT INTO USERS (NICK, PASSWORD, DIRCAP) \
-    	VALUES (?, ?, ?);", [str(user), password, str(dircap)]);
+def sign_up_user(user, password, dircap):
+    #conn.execute("INSERT INTO USERS (NICK, PASSWORD, DIRCAP) \
+    	#VALUES (?, ?, ?);", [str(user), new_salted_password(password), str(dircap)]);
+    conn = sqlite3.connect('users.bd')
+    salt = uuid.uuid4().hex
+    password = hashlib.sha512(str(password).encode('utf-8') + str(salt).encode('utf-8')).hexdigest()
+    conn.execute("INSERT INTO USERS (NICK, SALT, PASSWORD, DIRCAP) \
+    	VALUES (?, ?, ?, ?);", [str(user), salt, password, str(dircap)]);
 
     conn.commit()
+    conn.close()
 
 def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-@auth.get_password
-def get_password(username):
-    conn = sqlite3.connect('users.bd')
-    password = getUserPassword(username, conn)
-    conn.close()
-    return password
 
 @auth.error_handler
 def unauthorized():
     return make_response(jsonify({'error': 'Unauthorized access'}), 401)
 
 @app.route('/api/<user>/files', methods=['GET'])
-#@auth.login_required
+@auth.login_required
 def get_files_user(user):
-    conn = sqlite3.connect('users.bd')
-    dircap = getUserDirCap(user, conn)
-    conn.close()
-    return requests.get(URL_CLIENT_TAHOE + '/uri/' + dircap + "?t=json").text
+    if auth.username() == user:
+        conn = sqlite3.connect('users.bd')
+        dircap = get_user_dir_cap(user, conn)
+        conn.close()
+        return requests.get(URL_CLIENT_TAHOE + '/uri/' + dircap + "?t=json").text
+    else:
+        return unauthorized()
 
 ##GUARRADA PERO FUNCIONA##
 #@app.route('/api/<user>/files', methods=['GET', 'POST'])
@@ -83,65 +103,70 @@ def get_files_user(user):
 #    credentials = request.get_json()
 #    if credentials == None:
 #        return make_response(jsonify({'error': 'Unauthorized access'}), 401)
-#    if credentials['user'] == user and credentials['password'] == getUserPassword(user, conn):
-#        dircap = getUserDirCap(user, conn)
+#    if credentials['user'] == user and credentials['password'] == get_user_password(user, conn):
+#        dircap = get_user_dir_cap(user, conn)
 #        conn.close()
 #        return requests.get(URL_CLIENT_TAHOE + '/uri/' + dircap + "?t=json").text
 #    return make_response(jsonify({'error': 'Unauthorized access'}), 401)
 
 @app.route('/api/<user>/<fileName>', methods=['GET'])
-#@auth.login_required
+@auth.login_required
 def get_file_user(user, fileName):
-    if request.args.get('t') == "info":
-        return fileName
+    if auth.username() == user:
+        if request.args.get('t') == "info":
+            return fileName
+        else:
+            conn = sqlite3.connect('users.bd')
+            dircap = get_user_dir_cap(user, conn)
+            conn.close()
+            print(URL_CLIENT_TAHOE + '/uri/' + dircap + '/' + fileName)
+            response = requests.get(URL_CLIENT_TAHOE + '/uri/' + dircap + '/' + fileName)
+            return Response(stream_with_context(response.iter_content()), content_type = response.headers['content-type'])
     else:
-        conn = sqlite3.connect('users.bd')
-        dircap = getUserDirCap(user, conn)
-        conn.close()
-        print(URL_CLIENT_TAHOE + '/uri/' + dircap + '/' + fileName)
-        response = requests.get(URL_CLIENT_TAHOE + '/uri/' + dircap + '/' + fileName)
-        return Response(stream_with_context(response.iter_content()), content_type = response.headers['content-type'])
+        return unauthorized()
 
 @app.route('/api/<user>/upload_file', methods=['POST'])
-#@auth.login_required
+@auth.login_required
 def upload_file_user(user):
-    conn = sqlite3.connect('users.bd')
-    dircap = getUserDirCap(user, conn)
-    conn.close()
-    # check if the post request has the file part
-    if 'file' not in request.files:
-        flash('No file part')
-        #return redirect(request.url)
-        return "MAL"
-    file = request.files['file']
-    # if user does not select file, browser also
-    # submit a empty part without filename
-    if file.filename == '':
-        flash('No selected file')
-        #return redirect(request.url)
-        return "MAL"
-    #if file and allowed_file(file.filename):
-    filename = secure_filename(file.filename)
-    files = {'file': filename}
-    return requests.post(URL_CLIENT_TAHOE + '/uri/' + dircap + '?t=upload', files=files).text
-    #return "HELLO"
+    if auth.username() == user:
+        conn = sqlite3.connect('users.bd')
+        dircap = get_user_dir_cap(user, conn)
+        conn.close()
+        # check if the post request has the file part
+        if 'file' not in request.files:
+            flash('No file part')
+            #return redirect(request.url)
+            return "MAL"
+        file = request.files['file']
+        # if user does not select file, browser also
+        # submit a empty part without filename
+        if file.filename == '':
+            flash('No selected file')
+            #return redirect(request.url)
+            return "MAL"
+        #if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        files = {'file': filename}
+        return requests.post(URL_CLIENT_TAHOE + '/uri/' + dircap + '?t=upload', files=files).text
+        #return "HELLO"
+    else:
+        return unauthorized()
 
 @app.route('/api/signup', methods=["POST"])
-def signup():
-    #FALTA MIRAR QUE NO EXISTA EL USER
-    conn = sqlite3.connect('users.bd')
+def sign_up():
+    #FALTA MIRAR QUE NO EXISTA EL USER (ficar try exception)
+    
     #user = jsonify(request.get_json(force=True))
     user = request.get_json()
     r = requests.post(URL_CLIENT_TAHOE + '/uri?t=mkdir&name=' + user['user'])
-    signUpUser(user['user'], user['password'], r.text, conn)
-    conn.close()
-    return "OK"
+    sign_up_user(user['user'], user['password'], r.text)
+    return jsonify(success=True)
 
 @app.route('/api/signin', methods=["POST"])
-def signin():
+def sign_in():
     json = request.get_json()
     if exist_user(json['user']):
-        hash_in = json['password']
+        hash_in = get_hash_password(json['user'], json['password'])
         hash_out = get_password(json['user'])
         if hash_in == hash_out:
             return jsonify(success=True)
@@ -154,11 +179,11 @@ def signin():
 def gestion():
     if request.method == 'GET':
         conn = sqlite3.connect('users.bd')
-        furl = getFurl(conn)
+        furl = get_furl(conn)
         return str(furl)
     if request.method == 'POST':
         conn = sqlite3.connect('users.bd')
-        insertFurl(request.form['furl'], conn)
+        insert_furl(request.form['furl'], conn)
         conn.close()
         return request.form['furl']
 
