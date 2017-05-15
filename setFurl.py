@@ -1,0 +1,18 @@
+#!/usr/bin/python
+import requests, sys
+
+######################################
+##### FALTA PONER LA IP CORRECTA #####
+######################################
+
+if len(sys.argv) < 2:
+    print "Usage: ./setFurl.py <path-where-introducer.furl-is>"
+else:
+    url = 'http://127.0.0.1:5000'
+    path = sys.argv[1]
+    fo = open(path, "r")
+    furl = fo.read()
+    furl = str(furl).split("\n")[0]
+    fo.close()
+    r = requests.post(url+'/api/gestion', data = {'furl':furl})
+    print r.text
