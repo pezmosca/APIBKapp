@@ -42,6 +42,7 @@ def exist_user(user):
         return True
 
 def insert_furl(furl, conn):
+    conn.execute("DELETE FROM GESTION")
     conn.execute("INSERT INTO GESTION (FURL) VALUES (?);", [furl]);
     conn.commit()
 
@@ -155,7 +156,7 @@ def upload_file_user(user):
 @app.route('/api/signup', methods=["POST"])
 def sign_up():
     #FALTA MIRAR QUE NO EXISTA EL USER (ficar try exception)
-    
+
     #user = jsonify(request.get_json(force=True))
     user = request.get_json()
     r = requests.post(URL_CLIENT_TAHOE + '/uri?t=mkdir&name=' + user['user'])
@@ -172,7 +173,7 @@ def sign_in():
             return jsonify(success=True)
         else:
             return jsonify(success=False)
-    
+
     return jsonify(success=False)
 
 @app.route('/api/gestion', methods=["GET", "POST"])
