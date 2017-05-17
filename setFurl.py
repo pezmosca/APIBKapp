@@ -1,4 +1,4 @@
-#!/usr/bin/python
+
 import requests, sys
 
 ######################################
@@ -8,9 +8,9 @@ import requests, sys
 if len(sys.argv) < 2:
     print "Usage: ./setFurl.py <path-where-introducer.furl-is>"
 else:
-    url = 'http://127.0.0.1:5000'
+    url = 'http://192.168.5.241:5000'
     path = sys.argv[1]
-    fo = open(path, "r")
+    fo = open(path + "/private/introducer.furl", "r")
     furl = fo.read()
     furl = str(furl).split("\n")[0]
     fo.close()

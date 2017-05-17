@@ -193,4 +193,4 @@ def gestion():
 if __name__ == '__main__':
     app.secret_key = 'kubernetesydockers'
     app.config['SESSION_TYPE'] = 'filesystem'
-    app.run(debug=True)
+    app.run(debug=True, host='192.168.5.241')
