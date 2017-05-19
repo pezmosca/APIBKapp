@@ -122,7 +122,7 @@ def get_file_user(user, fileName):
             conn.close()
             print(URL_CLIENT_TAHOE + '/uri/' + dircap + '/' + fileName)
             response = requests.get(URL_CLIENT_TAHOE + '/uri/' + dircap + '/' + fileName)
-            return Response(stream_with_context(response.iter_content()), content_type = response.headers['content-type'])
+            return Response(stream_with_context(response.iter_content()), content_type = "application/octet-stream")
     else:
         return unauthorized()
 
