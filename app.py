@@ -114,15 +114,20 @@ def get_files_user(user):
 @auth.login_required
 def get_file_user(user, fileName):
     if auth.username() == user:
-        if request.args.get('t') == "info":
-            return fileName
+
+        conn = sqlite3.connect('users.bd')
+        dircap = get_user_dir_cap(user, conn)
+        conn.close()
+
+        if request.args.get('t') == "delete":
+            files = {'file': open(str(fileName),'rb')}
+            os.remove(str(fileName))
+            requests.post(URL_CLIENT_TAHOE + '/uri/' + dircap + '?t=upload', files=files)
+            return requests.delete(URL_CLIENT_TAHOE + '/uri/' + dircap + "/" + str(fileName))
         else:
-            conn = sqlite3.connect('users.bd')
-            dircap = get_user_dir_cap(user, conn)
-            conn.close()
             print(URL_CLIENT_TAHOE + '/uri/' + dircap + '/' + fileName)
             response = requests.get(URL_CLIENT_TAHOE + '/uri/' + dircap + '/' + fileName)
-            return Response(stream_with_context(response.iter_content()), content_type = "application/octet-stream")
+            return Response(stream_with_context(response.iter_content()), content_type = response.headers['content-type'])
     else:
         return unauthorized()
 
