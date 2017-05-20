@@ -14,6 +14,9 @@ ALLOWED_EXTENSIONS = set(['txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'zip', 'gz'
 
 auth = HTTPBasicAuth()
 
+#Diccionari
+files_tokens = dict()
+
 def new_salted_password(password):
     salt = uuid.uuid4().hex
     return str(hashlib.sha512(password + salt).hexdigest())
@@ -109,6 +112,32 @@ def get_files_user(user):
 #        conn.close()
 #        return requests.get(URL_CLIENT_TAHOE + '/uri/' + dircap + "?t=json").text
 #    return make_response(jsonify({'error': 'Unauthorized access'}), 401)
+
+@app.route('/api/<user>/<fileName>/tokenizer', methods=['GET'])
+@auth.login_required
+def get_token_from_link(user, fileName):
+    if auth.username() == user:
+        conn = sqlite3.connect('users.bd')
+        dircap = get_user_dir_cap(user, conn)
+        conn.close()
+
+        token = uuid.uuid4().hex
+        while token in files_tokens:
+            token = uuid.uuid4().hex
+        
+        files_tokens[token] = [user, dircap, fileName]
+        return jsonify(success=True, token=token)
+    else:
+        return unauthorized()
+
+@app.route('/api/download/token/<token>', methods=['GET'])
+def get_file_from_token(token):
+    if token in files_tokens:
+        print(URL_CLIENT_TAHOE + '/uri/' + dircap + '/' + fileName)
+        response = requests.get(URL_CLIENT_TAHOE + '/uri/' + dircap + '/' + fileName)
+        return Response(stream_with_context(response.iter_content()), content_type = response.headers['content-type'])
+    else:
+        return unauthorized()
 
 @app.route('/api/<user>/<fileName>', methods=['GET'])
 @auth.login_required
