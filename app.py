@@ -170,17 +170,14 @@ def upload_file_user(user):
         conn.close()
         # check if the post request has the file part
         if 'file' not in request.files:
-            flash('No file part')
-            #return redirect(request.url)
-            return "MAL"
+            return jsonify(success=False, error='No file in request')
         file = request.files['file']
         # if user does not select file, browser also
         # submit a empty part without filename
         if file.filename == '':
-            flash('No selected file')
-            #return redirect(request.url)
-            return "MAL"
+            return jsonify(success=False, error='No filename')
         #if file and allowed_file(file.filename):
+
         filename = secure_filename(file.filename)
         files = {'file': filename}
         return requests.post(URL_CLIENT_TAHOE + '/uri/' + dircap + '?t=upload', files=files).text
