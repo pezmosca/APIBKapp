@@ -7,9 +7,11 @@ from werkzeug.utils import secure_filename
 app = Flask(__name__)
 CORS(app)
 
-import sqlite3, requests, os, hashlib, uuid, json
+import sqlite3, requests, os, hashlib, uuid, json, sys
 
-URL_CLIENT_TAHOE = 'http://192.168.5.240:3456'
+#URL_CLIENT_TAHOE = 'http://192.168.5.240:3456'
+URL_CLIENT_TAHOE = 'http://' + str(sys.argv[2])
+
 ALLOWED_EXTENSIONS = set(['txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'zip', 'gz'])
 
 auth = HTTPBasicAuth()
@@ -225,4 +227,4 @@ def gestion():
 if __name__ == '__main__':
     app.secret_key = 'kubernetesydockers'
     app.config['SESSION_TYPE'] = 'filesystem'
-    app.run(debug=True, host='192.168.5.241')
+    app.run(debug=True, host=sys.argv[1])
