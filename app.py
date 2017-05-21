@@ -135,7 +135,6 @@ def get_token_from_link(user, fileName):
 @app.route('/api/download/token/<token>', methods=['GET'])
 def get_file_from_token(token):
     if token in files_tokens:
-        print(URL_CLIENT_TAHOE + '/uri/' + files_tokens[token][1] + '/' + files_tokens[token][2])
         response = requests.get(URL_CLIENT_TAHOE + '/uri/' + files_tokens[token][1] + '/' + files_tokens[token][2])
         del files_tokens[token]
         return Response(stream_with_context(response.iter_content()), content_type = response.headers['content-type'])
