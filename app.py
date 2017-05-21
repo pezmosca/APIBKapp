@@ -171,19 +171,18 @@ def upload_file_user(user):
         dircap = get_user_dir_cap(user, conn)
         conn.close()
         # check if the post request has the file part
-        if 'file' not in request.files:
-            return jsonify(success=False, error='No file in request')
-        file = request.files['file']
+        #if 'file' not in request.files:
+        #    return jsonify(success=False, error='No file in request')
+        #file = request.files['file']
         # if user does not select file, browser also
         # submit a empty part without filename
-        if file.filename == '':
-            return jsonify(success=False, error='No filename')
+        #if file.filename == '':
+        #  return jsonify(success=False, error='No filename')
         #if file and allowed_file(file.filename):
-
-        filename = secure_filename(file.filename)
+        json = request.get_json()
+        filename = json["filename"]
         files = {'file': filename}
-        return requests.post(URL_CLIENT_TAHOE + '/uri/' + dircap + '?t=upload', files=files).text
-        #return "HELLO"
+        return requests.put(URL_CLIENT_TAHOE + '/uri/' + dircap + '/' +  filename, files=files).text
     else:
         return unauthorized()
 
